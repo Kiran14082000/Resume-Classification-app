@@ -14,9 +14,15 @@ from nltk.stem import WordNetLemmatizer
 from sklearn.ensemble import VotingClassifier
 from sklearn.calibration import calibration_curve
 
-# Load BERT model and tokenizer
-tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-model = BertModel.from_pretrained('bert-base-uncased')
+# Load BERT model and tokenizer once, then reuse them
+@st.cache_resource
+def load_bert():
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+    model = BertModel.from_pretrained('bert-base-uncased')
+    model.eval()
+    return tokenizer, model
+
+tokenizer, model = load_bert()
 
 def get_bert_embeddings(text):
     inputs = tokenizer(text, return_tensors='pt', truncation=True, padding=True)
@@ -53,10 +59,28 @@ def clean_text(text):
 
     return ' '.join(cleaned_tokens)
 
-# Load saved models
-label_encoder = joblib.load(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'models', 'label_encoder.pkl'))
-tfidf_vectorizer = joblib.load(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'models', 'tfidf_vectorizer.pkl'))
-ensemble_model = joblib.load(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'models', 'ensemble_model.pkl'))
+# Load saved models once and reuse them
+@st.cache_resource
+def load_saved_models():
+    models_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "models"
+    )
+
+    label_encoder = joblib.load(
+        os.path.join(models_dir, "label_encoder.pkl")
+    )
+    tfidf_vectorizer = joblib.load(
+        os.path.join(models_dir, "tfidf_vectorizer.pkl")
+    )
+    ensemble_model = joblib.load(
+        os.path.join(models_dir, "ensemble_model.pkl")
+    )
+
+    return label_encoder, tfidf_vectorizer, ensemble_model
+
+
+label_encoder, tfidf_vectorizer, ensemble_model = load_saved_models()
 
 # Streamlit UI
 st.title("Resume Classification and Job Matching App")
@@ -67,6 +91,7 @@ pdf_file = st.file_uploader("Upload your resume (PDF)", type=["pdf"])
 
 # Job description input
 job_description = st.text_area("Enter the job description")
+st.caption(f"Job description length: {len(job_description)} characters")
 
 if st.button("Predict"):
     if pdf_file is not None and job_description.strip() != "":
