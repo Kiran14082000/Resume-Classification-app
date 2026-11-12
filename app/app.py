@@ -34,7 +34,9 @@ def extract_text_from_pdf(pdf_file):
     pdf_reader = PyPDF2.PdfReader(pdf_file)
     text = ''
     for page in pdf_reader.pages:
-        text += page.extract_text()
+        page_text = page.extract_text()
+        if page_text:
+            text += page_text + '\n'
     return text
 
 def clean_text(text):
@@ -110,7 +112,21 @@ if submitted:
         cleaned_resume_text = clean_text(resume_text)
         
         # Vectorize the resume text with TF-IDF
+        # Check for readable resume text
+        if not cleaned_resume_text.strip():
+            st.error("No readable text was extracted. Please upload a text-based PDF.")
+            st.stop()
+
         vectorized_resume_text = tfidf_vectorizer.transform([cleaned_resume_text])
+
+        # Experimental warning; threshold not validated
+        probabilities = ensemble_model.predict_proba(vectorized_resume_text)[0]
+        max_probability = float(np.max(probabilities))
+        if max_probability < 0.12:
+            st.warning(
+                "This document may not match the resume categories supported by this app. "
+                "Check that you uploaded a relevant resume; the category prediction may be unreliable."
+            )
         
         # Predict the resume category using the ensemble model
         predicted_category = ensemble_model.predict(vectorized_resume_text)
