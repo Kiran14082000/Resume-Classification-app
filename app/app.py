@@ -86,14 +86,24 @@ label_encoder, tfidf_vectorizer, ensemble_model = load_saved_models()
 st.title("Resume Classification and Job Matching App")
 st.write("Upload your resume as a PDF and enter the job description to predict the category and your probability of getting selected.")
 
-# Resume PDF upload
-pdf_file = st.file_uploader("Upload your resume (PDF)", type=["pdf"])
+# Resume and job description inputs
+with st.form("resume_matching_form"):
+    pdf_file = st.file_uploader(
+        "Upload your resume (PDF)",
+        type=["pdf"]
+    )
 
-# Job description input
-job_description = st.text_area("Enter the job description")
-st.caption(f"Job description length: {len(job_description)} characters")
+    job_description = st.text_area(
+        "Enter the job description"
+    )
 
-if st.button("Predict"):
+    st.caption(
+        f"Job description length: {len(job_description)} characters"
+    )
+
+    submitted = st.form_submit_button("Predict")
+
+if submitted:
     if pdf_file is not None and job_description.strip() != "":
         # Extract and clean text from PDF
         resume_text = extract_text_from_pdf(pdf_file)
